@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 //Reference: http://stackoverflow.com/questions/12962239/using-c-sharp-to-edit-text-within-a-binary-file
 
 /*
-    ToDo:
+    ToDo: Add in command line arguments
 
 */
 
