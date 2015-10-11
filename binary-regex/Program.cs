@@ -22,96 +22,239 @@ namespace binary_regex
     {
         public static void Main(string[] args)
         {
+            //declare the arrays with the regex rules
+            string[] astrPattern = { };
+            string[] astrReplace = { };
+
             //check for the regex rules file
             string strRulesPath = Directory.GetCurrentDirectory() + @"\rules.txt";
-            if (File.Exists(strRulesPath))
+            if (!File.Exists(strRulesPath))
             {
-                //fill the arrays with the regex rules
-                string[] astrPattern = {  };
-                string[] astrReplace = {  };
-                ProcessRulesFile(strRulesPath, ref astrPattern, ref astrReplace);
-                string strRootPath = "";
-                string strReplaceDir = @"\regex";
-
-                if(args.Length == 0)
-                {
-                    Console.WriteLine("At least one command line argument is required.");
-                    Console.WriteLine("Usage: binary-regex.exe <path-to-file> [<path-to-file>]");
-                    Console.WriteLine("Usage: binary-regex.exe <path-to-directory> [<path-to-directory>]");
-                    Console.ReadKey();
-                    return;
-                }
-
-                //check for the input file/directory
-                foreach (string path in args)
-                {
-                    if (File.Exists(path))
-                    {
-                        // This path is a file
-                        strRootPath = Directory.GetParent(path).FullName;
-                        if(Directory.Exists(strRootPath + strReplaceDir))
-                        {
-                            Console.WriteLine(strRootPath + strReplaceDir + " already exists.");
-                            Console.WriteLine("If you continue, the contents of this directory will be deleted.");
-                            Console.WriteLine("Are you sure you want to continue? (y) (n)");
-                            ConsoleKeyInfo ckiInput = Console.ReadKey();
-                            if(ckiInput.Key.ToString().ToUpper() == "Y")
-                            {
-                                DeleteDirectory(strRootPath + strReplaceDir);
-                                Console.Clear();
-                            }
-                            else
-                            {
-                                //exit the application
-                                return;
-                            }
-                            
-                        }
-                        Directory.CreateDirectory(strRootPath + strReplaceDir);
-                        ProcessFile(strRootPath, strReplaceDir, path, astrPattern, astrReplace);
-                    }
-                    else if (Directory.Exists(path))
-                    {
-                        // This path is a directory
-                        strRootPath = Directory.GetParent(path).FullName;
-                        if (Directory.Exists(strRootPath + strReplaceDir))
-                        {
-                            Console.WriteLine(strRootPath + strReplaceDir + " already exists.");
-                            Console.WriteLine("If you continue, the contents of this directory will be deleted.");
-                            Console.WriteLine("Are you sure you want to continue? (y) (n)");
-                            ConsoleKeyInfo ckiInput = Console.ReadKey();
-                            if (ckiInput.Key.ToString().ToUpper() == "Y")
-                            {
-                                DeleteDirectory(strRootPath + strReplaceDir);
-                            }
-                            else
-                            {
-                                //exit the application
-                                return;
-                            }
-
-                        }
-                        Directory.CreateDirectory(strRootPath + strReplaceDir);
-                        ProcessDirectory(strRootPath, strReplaceDir, path, astrPattern, astrReplace);
-                    }
-                    else
-                    {
-                        Console.WriteLine("{0} is not a valid file or directory.", path);
-                        Console.ReadKey();
-                    }
-                }
+                Console.WriteLine("Could not find: " + strRulesPath);
+                Console.WriteLine("Program will now exit.");
+                Console.ReadKey();
+                return;
             }
             else
             {
-                Console.WriteLine("Cannot find " + Directory.GetCurrentDirectory() + @"\rules.txt");
-                Console.ReadKey();
+                ProcessRulesFile(strRulesPath, ref astrPattern, ref astrReplace);
             }
 
+            //check that at least one file or path was passed in args
+            int intFilePathArguments = 0;
+            foreach (string path in args)
+            {
+                if (File.Exists(path))
+                {
+                    intFilePathArguments++;
+                }
+                else if (Directory.Exists(path))
+                {
+                    intFilePathArguments++;
+                }
+            }
+            if(intFilePathArguments < 1)
+            {
+                Console.WriteLine("At least one command line argument is required.");
+                Console.WriteLine("Usage: binary-regex.exe <path-to-file> [<path-to-file>]");
+                Console.WriteLine("Usage: binary-regex.exe <path-to-directory> [<path-to-directory>]");
+                Console.WriteLine("Program will now exit.");
+                Console.ReadKey();
+                return;
+            }
+
+
+            //check for options in args
+            bool blVerbose = false;
+            bool blNoRename = false;
+            bool blModifiedFilesOnly = false;
+            bool blNoLogFile = false;
+            bool blFileNameMask = false;
+            bool blExtensionMask = false;
+            bool blCustomOutputPath = false;
+            string strFileNameMask = "";
+            string strExtensionMask = "";
+            string strCustomOutputPath = "";
+            foreach (string arg in args)
+            {
+                
+                switch (arg.ToLower().Substring(0,2))
+                {
+                    case "-v":
+                        //verbose mode
+                        Console.WriteLine("verbose mode");
+                        blVerbose = true;
+                        break;
+
+                    case "-r":
+                        //no rename
+                        Console.WriteLine("no rename");
+                        blNoRename = true;
+                        break;
+
+                    case "-m":
+                        //only copy modified files
+                        Console.WriteLine("only copy modified files");
+                        blModifiedFilesOnly = true;
+                        break;
+
+                    case "-l":
+                        //don't create log file
+                        Console.WriteLine("don't create log file");
+                        blNoLogFile = true;
+                        break;
+
+                    case "-f":
+                        //filename mask
+                        try
+                        {
+                            if (arg.Substring(2, 1) == "=")
+                            {
+                                blFileNameMask = true;
+                                strFileNameMask = arg.Substring(3, arg.Length - 3);
+                                Console.WriteLine("Using filename mask: " + strFileNameMask);
+                            }
+                            else
+                            {
+                                throw new ArgumentException();
+                            }
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Invalid filename mask.");
+                            Console.WriteLine("Usage: -f=myfilename");
+                            Console.WriteLine("Program will now exit.");
+                            Console.ReadKey();
+                            return;
+                        }
+                        break;
+
+                    case "-e":
+                        //extension mask
+                        try
+                        {
+                            if (arg.Substring(2, 1) == "=")
+                            {
+                                blExtensionMask = true;
+                                strExtensionMask = arg.Substring(3, arg.Length - 3);
+                                Console.WriteLine("Using extension mask: " + strExtensionMask);
+                            }
+                            else
+                            {
+                                throw new ArgumentException();
+                            }
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Invalid extension mask.");
+                            Console.WriteLine("Usage: -e=ext");
+                            Console.WriteLine("Program will now exit.");
+                            Console.ReadKey();
+                            return;
+                        }
+                        break;
+
+                    case "-o":
+                        //output path
+
+                        try
+                        {
+                            if (arg.Substring(2, 1) == "=")
+                            {
+                                strCustomOutputPath = arg.Substring(3, arg.Length - 3);
+                                if(Directory.Exists(strCustomOutputPath))
+                                {
+                                    blCustomOutputPath = true;
+                                    Console.WriteLine("Using ouput path: " + strCustomOutputPath);
+                                }
+                                else
+                                {
+                                    throw new ArgumentException();
+                                }
+                            }
+                            else
+                            {
+                                throw new ArgumentException();
+                            }
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Invalid ouput path.");
+                            Console.WriteLine(@"Usage: -o=C:\path\to\files");
+                            Console.WriteLine("Program will now exit.");
+                            Console.ReadKey();
+                            return;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            string strRootPath = "";
+            string strOutputPath = "";
+            string strReplaceDir = @"\regex";
+
+
+
+
+
+            //check for the input file/directory
+            foreach (string path in args)
+            {
+                if (File.Exists(path))
+                {
+                    // This path is a file
+                    strRootPath = Directory.GetParent(path).FullName;
+                    if (Directory.Exists(strRootPath + strReplaceDir))
+                    {
+                        Console.WriteLine(strRootPath + strReplaceDir + " already exists.");
+                        Console.WriteLine("If you continue, the contents of this directory will be deleted.");
+                        Console.WriteLine("Are you sure you want to continue? (y) (n)");
+                        ConsoleKeyInfo ckiInput = Console.ReadKey();
+                        if (ckiInput.Key.ToString().ToUpper() == "Y")
+                        {
+                            DeleteDirectory(strRootPath + strReplaceDir);
+                            Console.Clear();
+                        }
+                        else
+                        {
+                            //exit the application
+                            return;
+                        }
+                    }
+                    Directory.CreateDirectory(strRootPath + strReplaceDir);
+                    ProcessFile(strRootPath, strReplaceDir, path, astrPattern, astrReplace);
+                }
+                else if (Directory.Exists(path))
+                {
+                    // This path is a directory
+                    strRootPath = Directory.GetParent(path).FullName;
+                    if (Directory.Exists(strRootPath + strReplaceDir))
+                    {
+                        Console.WriteLine(strRootPath + strReplaceDir + " already exists.");
+                        Console.WriteLine("If you continue, the contents of this directory will be deleted.");
+                        Console.WriteLine("Are you sure you want to continue? (y) (n)");
+                        ConsoleKeyInfo ckiInput = Console.ReadKey();
+                        if (ckiInput.Key.ToString().ToUpper() == "Y")
+                        {
+                            DeleteDirectory(strRootPath + strReplaceDir);
+                        }
+                        else
+                        {
+                            //exit the application
+                            return;
+                        }
+
+                    }
+                    Directory.CreateDirectory(strRootPath + strReplaceDir);
+                    ProcessDirectory(strRootPath, strReplaceDir, path, astrPattern, astrReplace);
+                }
+            }
         }
 
 
-        // Process all files in the directory passed in, recurse on any directories 
-        // that are found, and process the files they contain.
         public static void ProcessDirectory(string strRootPath, string strReplaceDir, string targetDirectory, string[] astrPattern, string[] astrReplace)
         {
             // Process the list of files found in the directory.
@@ -226,21 +369,21 @@ namespace binary_regex
             }
         }
 
-        public static void ProcessRulesFile(string filein, ref string[] astrPattern, ref string[] astrReplace)
+        public static void ProcessRulesFile(string strFilePath, ref string[] astrPattern, ref string[] astrReplace)
         {
             string line;
 
-            List<string> p1 = new List<string>();
-            List<string> p2 = new List<string>();
+            List<string> lstrColumnOne = new List<string>();
+            List<string> lstrColumnTwo = new List<string>();
 
-            System.IO.StreamReader file = new System.IO.StreamReader(filein);
+            System.IO.StreamReader file = new System.IO.StreamReader(strFilePath);
             while ((line = file.ReadLine()) != null)
                 try
                 {
-                    String[] parms = line.Trim().Split('\t');
+                    String[] astrColumnsFromFile = line.Trim().Split('\t');
 
-                    p1.Add(parms[0]);
-                    p2.Add(parms[1]);
+                    lstrColumnOne.Add(astrColumnsFromFile[0]);
+                    lstrColumnTwo.Add(astrColumnsFromFile[1]);
                 }
                 catch
                 {
@@ -249,27 +392,27 @@ namespace binary_regex
                     Console.WriteLine("Ensure the file matches this pattern: <pattern><tab><replace>.");
                 }
 
-            astrPattern = p1.ToArray();
-            astrReplace = p2.ToArray();
+            astrPattern = lstrColumnOne.ToArray();
+            astrReplace = lstrColumnTwo.ToArray();
         }
 
-        public static void DeleteDirectory(string target_dir)
+        public static void DeleteDirectory(string strPath)
         {
-            string[] files = Directory.GetFiles(target_dir);
-            string[] dirs = Directory.GetDirectories(target_dir);
+            string[] astrFiles = Directory.GetFiles(strPath);
+            string[] astrDirs = Directory.GetDirectories(strPath);
 
-            foreach (string file in files)
+            foreach (string file in astrFiles)
             {
                 File.SetAttributes(file, FileAttributes.Normal);
                 File.Delete(file);
             }
 
-            foreach (string dir in dirs)
+            foreach (string dir in astrDirs)
             {
                 DeleteDirectory(dir);
             }
 
-            Directory.Delete(target_dir, false);
+            Directory.Delete(strPath, false);
         }
     }
 
