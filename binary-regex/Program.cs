@@ -252,6 +252,8 @@ namespace binary_regex
                     ProcessDirectory(strRootPath, strReplaceDir, path, astrPattern, astrReplace);
                 }
             }
+
+            Console.ReadKey();
         }
 
 
@@ -272,7 +274,6 @@ namespace binary_regex
         {
 
             string strOutputFile = "";
-            Console.WriteLine("Running replace on: " + Path.GetFileNameWithoutExtension(strInputFile));
             string strTemp = "";
             string strInputString = "";
             string last = astrPattern.Last();
@@ -360,13 +361,14 @@ namespace binary_regex
             if (strReplaced)
             {
                 File.WriteAllBytes(strOutputFile, byteInputString);
-                Console.WriteLine(Path.GetFileNameWithoutExtension(strInputFile) + " was updated");
+                Console.WriteLine(Path.GetFileName(strInputFile) + " was updated");
             }
             else
             {
                 File.WriteAllBytes(strOutputFile, byteInputString);
-                Console.WriteLine(Path.GetFileNameWithoutExtension(strInputFile) + " was not modified");
+                Console.WriteLine(Path.GetFileName(strInputFile) + " was not modified");
             }
+            
         }
 
         public static void ProcessRulesFile(string strFilePath, ref string[] astrPattern, ref string[] astrReplace)
